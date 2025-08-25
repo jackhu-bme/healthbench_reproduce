@@ -34,9 +34,9 @@ from .sampler.chat_completion_sampler import (
 )
 from .types import Eval, EvalResult, MessageList, SamplerBase, SingleEvalResult
 
-INPUT_PATH = "/home/yuqi/data2_yuqi/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
-INPUT_PATH_HARD = "/home/yuqi/data2_yuqi/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
-INPUT_PATH_CONSENSUS = "/home/yuqi/data2_yuqi/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
+INPUT_PATH = "/home/aiscuser/healthbench_reproduce/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
+INPUT_PATH_HARD = "/home/aiscuser/healthbench_reproduce/healthbench/data/hard_2025-05-08-21-00-10.jsonl"
+INPUT_PATH_CONSENSUS = "/home/aiscuser/healthbench_reproduce/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
 
 # INPUT_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"
 # INPUT_PATH_HARD = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl"
@@ -379,7 +379,11 @@ class HealthBenchEval(Eval):
             ).replace("<<rubric_item>>", str(rubric_item))
             messages: MessageList = [dict(content=grader_prompt, role="user")]
             while True:
-                sampler_response = self.grader_model(messages)
+                if isinstance(self.grader_model, tuple):
+                    print(f"warning: grader_model is a tuple, using first element")
+                    sampler_response = self.grader_model[0](messages)
+                else:
+                    sampler_response = self.grader_model(messages)
                 grading_response = sampler_response.response_text
                 grading_response_dict = parse_json_to_dict(grading_response)
                 if "criteria_met" in grading_response_dict:
@@ -501,7 +505,7 @@ class HealthBenchEval(Eval):
                 metrics=metrics,
                 example_level_metadata={
                     "score": score,
-                    "usage": get_usage_dict(response_usage),
+                    "usage": None, #get_usage_dict(response_usage),
                     "rubric_items": rubric_items_with_grades,
                     "prompt": actual_queried_prompt_messages,
                     "completion": [dict(content=response_text, role="assistant")],
@@ -535,7 +539,7 @@ def main():
     parser.add_argument(
         "--n-threads",
         type=int,
-        default=1,
+        default=10,
         help="Number of threads to run",
     )
     args = parser.parse_args()
@@ -570,11 +574,17 @@ def physician_completions_main(
     #     system_message=OPENAI_SYSTEM_MESSAGE_API,
     #     max_tokens=2048,
     # )
-    grading_sampler = ChatCompletionSamplerLocal(
-        model="openai/gpt-oss-20b",
+    grading_sampler = ChatCompletionSampler(
+        model="gpt-oss:20b",
         system_message=OPENAI_SYSTEM_MESSAGE_API,
         max_tokens=2048,
-    )
+        # openai_parameters={"base_url": 
+        #                        ["http://localhost:11434/v1", "http://localhost:11435/v1",],
+        #                        "api_key":"ollama", "multi_ollma": True}
+        openai_parameters={"base_url":"http://localhost:11435/v1","api_key":"ollama"}
+        # openai_parameters={"base_url":"http://localhost:8000/v1","api_key":"EMPTY"}
+        
+    ),
     dummy_sampler = SamplerBase()
 
     merge_metrics = []
@@ -601,14 +611,14 @@ def physician_completions_main(
             file_stem = f"healthbench_{parsable_mode}_referencecompletions_{date_str}"
         else:
             file_stem = f"healthbench_{parsable_mode}_humanbaseline_{date_str}"
-        report_filename = Path(f"/tmp/{file_stem}.html")
+        report_filename = Path(f"/home/aiscuser/tmp/{file_stem}.html")
         report_filename.write_text(common.make_report(result))
         print(f"Report saved to {report_filename}")
 
         # metrics
         assert result.metrics is not None
         metrics = result.metrics
-        result_filename = Path(f"/tmp/{file_stem}.json")
+        result_filename = Path(f"/home/aiscuser/tmp/{file_stem}.json")
         result_filename.write_text(json.dumps(metrics))
         print(f"Results saved to {result_filename}")
 
@@ -619,7 +629,7 @@ def physician_completions_main(
             "convos": result.convos,
             "metadata": result.metadata,
         }
-        full_result_filename = Path(f"/tmp/{file_stem}_allresults.json")
+        full_result_filename = Path(f"/home/aiscuser/tmp/{file_stem}_allresults.json")
         full_result_filename.write_text(json.dumps(full_result_dict, indent=2))
         print(f"All results saved to {full_result_filename}")
 

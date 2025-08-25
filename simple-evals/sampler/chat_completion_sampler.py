@@ -12,6 +12,7 @@ OPENAI_SYSTEM_MESSAGE_CHATGPT = (
     + "\nKnowledge cutoff: 2023-12\nCurrent date: 2024-04-01"
 )
 
+import random
 
 class ChatCompletionSampler(SamplerBase):
     """
@@ -24,9 +25,18 @@ class ChatCompletionSampler(SamplerBase):
         system_message: str | None = None,
         temperature: float = 0.5,
         max_tokens: int = 1024,
+        openai_parameters: dict | None = None,
     ):
         self.api_key_name = "OPENAI_API_KEY"
-        self.client = OpenAI()
+        if openai_parameters is not None:
+            if openai_parameters.get("multi_ollma", False):
+                api_key = openai_parameters.get("api_key", None)
+                base_url_list = openai_parameters.get("base_url", None)
+                self.client = [OpenAI(base_url=base_url, api_key=api_key) for base_url in base_url_list]
+            else:
+                self.client = OpenAI(**openai_parameters)
+        else:
+            self.client = OpenAI()
         # using api_key=os.environ.get("OPENAI_API_KEY")  # please set your API_KEY
         self.model = model
         self.system_message = system_message
@@ -63,7 +73,12 @@ class ChatCompletionSampler(SamplerBase):
         trial = 0
         while True:
             try:
-                response = self.client.chat.completions.create(
+                if isinstance(self.client, list):
+                    client = random.choice(self.client)
+                    # print(f"Using client {client.base_url} for sampling")
+                else:
+                    client = self.client
+                response = client.chat.completions.create(
                     model=self.model,
                     messages=message_list,
                     temperature=self.temperature,
