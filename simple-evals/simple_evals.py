@@ -53,7 +53,7 @@ def main():
     parser.add_argument(
         "--n-threads",
         type=int,
-        default=1,
+        default=10,
         help="Number of threads to run. Only supported for HealthBench and HealthBenchMeta.",
     )
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
@@ -413,7 +413,7 @@ def main():
             file_stem = f"{eval_name}_{model_name}"
             # file stem should also include the year, month, day, and time in hours and minutes
             file_stem += f"_{date_str}"
-            report_filename = f"/home/aiscuser/tmp/{file_stem}{debug_suffix}.html"
+            report_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}.html"
             print(f"Writing report to {report_filename}")
             with open(report_filename, "w") as fh:
                 fh.write(common.make_report(result))
@@ -422,12 +422,12 @@ def main():
             # Sort metrics by key
             metrics = dict(sorted(metrics.items()))
             print(metrics)
-            result_filename = f"/home/aiscuser/tmp/{file_stem}{debug_suffix}.json"
+            result_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}.json"
             with open(result_filename, "w") as f:
                 f.write(json.dumps(metrics, indent=2))
             print(f"Writing results to {result_filename}")
 
-            full_result_filename = f"/home/aiscuser/tmp/{file_stem}{debug_suffix}_allresults.json"
+            full_result_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}_allresults.json"
             with open(full_result_filename, "w") as f:
                 result_dict = {
                     "score": result.score,

@@ -34,9 +34,9 @@ from .sampler.chat_completion_sampler import (
 )
 from .types import Eval, EvalResult, MessageList, SamplerBase, SingleEvalResult
 
-INPUT_PATH = "/home/aiscuser/healthbench_reproduce/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
-INPUT_PATH_HARD = "/home/aiscuser/healthbench_reproduce/healthbench/data/hard_2025-05-08-21-00-10.jsonl"
-INPUT_PATH_CONSENSUS = "/home/aiscuser/healthbench_reproduce/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
+INPUT_PATH = "/home/yuqi/data2_yuqi/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
+INPUT_PATH_HARD = "/home/yuqi/data2_yuqi/healthbench/data/hard_2025-05-08-21-00-10.jsonl"
+INPUT_PATH_CONSENSUS = "/home/yuqi/data2_yuqi/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
 
 # INPUT_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"
 # INPUT_PATH_HARD = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl"
@@ -611,14 +611,14 @@ def physician_completions_main(
             file_stem = f"healthbench_{parsable_mode}_referencecompletions_{date_str}"
         else:
             file_stem = f"healthbench_{parsable_mode}_humanbaseline_{date_str}"
-        report_filename = Path(f"/home/aiscuser/tmp/{file_stem}.html")
+        report_filename = Path(f"/home/yuqi/data2_yuqi/tmp/{file_stem}.html")
         report_filename.write_text(common.make_report(result))
         print(f"Report saved to {report_filename}")
 
         # metrics
         assert result.metrics is not None
         metrics = result.metrics
-        result_filename = Path(f"/home/aiscuser/tmp/{file_stem}.json")
+        result_filename = Path(f"/home/yuqi/data2_yuqi/tmp/{file_stem}.json")
         result_filename.write_text(json.dumps(metrics))
         print(f"Results saved to {result_filename}")
 
@@ -629,7 +629,7 @@ def physician_completions_main(
             "convos": result.convos,
             "metadata": result.metadata,
         }
-        full_result_filename = Path(f"/home/aiscuser/tmp/{file_stem}_allresults.json")
+        full_result_filename = Path(f"/home/yuqi/data2_yuqi/tmp/{file_stem}_allresults.json")
         full_result_filename.write_text(json.dumps(full_result_dict, indent=2))
         print(f"All results saved to {full_result_filename}")
 
