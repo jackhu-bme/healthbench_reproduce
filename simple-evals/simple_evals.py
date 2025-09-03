@@ -80,6 +80,24 @@ def main():
                                ["http://localhost:11434/v1"],
                                "api_key":"ollama", "multi_ollma": True}
         ),
+        "llama-3.1-70b-instruct-turbo": ChatCompletionSampler(
+            model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        ),
+        "llama-3.3-70b-instruct-turbo-free": ChatCompletionSampler(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        ),
+        "llama-3.1-8b-instruct-turbo": ChatCompletionSampler(
+            model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        )
     }
 
     #     # Reasoning Models
@@ -359,13 +377,13 @@ def main():
                     n_threads=args.n_threads or 1,
                     subset_name="consensus",
                 )
-            # case "healthbench_meta":
-            #     return HealthBenchMetaEval(
-            #         grader_model=grading_sampler,
-            #         num_examples=10 if debug_mode else num_examples,
-            #         n_repeats=args.n_repeats or 1,
-            #         n_threads=args.n_threads or 1,
-            #     )
+            case "healthbench_meta":
+                return HealthBenchMetaEval(
+                    grader_model=grading_sampler,
+                    num_examples=10 if debug_mode else num_examples,
+                    n_repeats=args.n_repeats or 1,
+                    n_threads=args.n_threads or 1,
+                )
             case _:
                 raise Exception(f"Unrecognized eval type: {eval_name}")
 

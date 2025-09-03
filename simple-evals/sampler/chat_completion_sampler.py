@@ -14,6 +14,8 @@ OPENAI_SYSTEM_MESSAGE_CHATGPT = (
 
 import random
 
+from together import Together
+
 class ChatCompletionSampler(SamplerBase):
     """
     Sample from OpenAI's chat completion API
@@ -25,18 +27,24 @@ class ChatCompletionSampler(SamplerBase):
         system_message: str | None = None,
         temperature: float = 0.5,
         max_tokens: int = 1024,
+        client_type: str = "openai",
         openai_parameters: dict | None = None,
-    ):
-        self.api_key_name = "OPENAI_API_KEY"
-        if openai_parameters is not None:
-            if openai_parameters.get("multi_ollma", False):
-                api_key = openai_parameters.get("api_key", None)
-                base_url_list = openai_parameters.get("base_url", None)
-                self.client = [OpenAI(base_url=base_url, api_key=api_key) for base_url in base_url_list]
+    ):  
+        if client_type == "openai":
+            self.api_key_name = "OPENAI_API_KEY"
+            if openai_parameters is not None:
+                if openai_parameters.get("multi_ollma", False):
+                    api_key = openai_parameters.get("api_key", None)
+                    base_url_list = openai_parameters.get("base_url", None)
+                    self.client = [OpenAI(base_url=base_url, api_key=api_key) for base_url in base_url_list]
+                else:
+                    self.client = OpenAI(**openai_parameters)
             else:
-                self.client = OpenAI(**openai_parameters)
+                self.client = OpenAI()
+        elif client_type == "together":
+            self.client = Together()
         else:
-            self.client = OpenAI()
+            raise ValueError(f"Unknown client_type {client_type}")
         # using api_key=os.environ.get("OPENAI_API_KEY")  # please set your API_KEY
         self.model = model
         self.system_message = system_message

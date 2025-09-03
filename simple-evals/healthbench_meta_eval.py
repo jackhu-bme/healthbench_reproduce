@@ -17,7 +17,7 @@ from . import common
 from .healthbench_eval import GRADER_TEMPLATE, parse_json_to_dict
 from .types import Eval, EvalResult, SamplerBase, SingleEvalResult
 
-INPUT_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_meta_eval.jsonl"
+INPUT_PATH = "/home/yuqi/data2_yuqi/healthbench/data/2025-05-07-06-14-12_oss_meta_eval.jsonl"
 INDEX_STR_TEMPLATE = "pairwise_{model_or_physician}_{metric}_{pred_str}"
 CLUSTER_STR_TEMPLATE = "{cluster}: {index_str}"
 
@@ -88,6 +88,8 @@ class HealthBenchMetaEval(Eval):
             while True:
                 sampler_response = sampler(grader_convo)
                 response_text = sampler_response.response_text
+                response_dict = sampler_response.response_metadata
+                response_usage = response_dict.get("usage", None)
                 actual_queried_grader_convo = (
                     sampler_response.actual_queried_message_list
                 )
@@ -103,6 +105,9 @@ class HealthBenchMetaEval(Eval):
                 physician_labels=row["binary_labels"],
                 category=row["category"],
             )
+            metrics["grader_response_usage_total"] = response_usage.total_tokens
+            metrics["grader_response_usage_prompt"] = response_usage.prompt_tokens
+            metrics["grader_response_usage_completion"] = response_usage.completion_tokens
             score = metrics["model_predicted_positive"]
 
             # Create HTML for each sample result
