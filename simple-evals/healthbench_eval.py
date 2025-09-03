@@ -26,6 +26,8 @@ import blobfile as bf
 import numpy as np
 import pandas as pd
 
+import os
+
 from . import common
 from .sampler.chat_completion_sampler import (
     OPENAI_SYSTEM_MESSAGE_API,
@@ -34,9 +36,13 @@ from .sampler.chat_completion_sampler import (
 )
 from .types import Eval, EvalResult, MessageList, SamplerBase, SingleEvalResult
 
-INPUT_PATH = "/home/yuqi/data2_yuqi/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
-INPUT_PATH_HARD = "/home/yuqi/data2_yuqi/healthbench/data/hard_2025-05-08-21-00-10.jsonl"
-INPUT_PATH_CONSENSUS = "/home/yuqi/data2_yuqi/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
+import datetime
+
+import pickle
+
+INPUT_PATH = "/home/xufluo/healthbench_reproduce/healthbench/data/2025-05-07-06-14-12_oss_eval.jsonl"
+INPUT_PATH_HARD = "/home/xufluo/healthbench_reproduce/healthbench/data/hard_2025-05-08-21-00-10.jsonl"
+INPUT_PATH_CONSENSUS = "/home/xufluo/healthbench_reproduce/healthbench/data/consensus_2025-05-09-20-00-46.jsonl"
 
 # INPUT_PATH = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/2025-05-07-06-14-12_oss_eval.jsonl"
 # INPUT_PATH_HARD = "https://openaipublic.blob.core.windows.net/simple-evals/healthbench/hard_2025-05-08-21-00-10.jsonl"
@@ -272,6 +278,7 @@ class HealthBenchEval(Eval):
         self,
         grader_model: SamplerBase,
         num_examples: int | None = None,
+        skip: int = 0,
         n_repeats: int = 1,
         # If set, evaluate human completions or reference completions instead of model completions.
         physician_completions_mode: str | None = None,
@@ -305,6 +312,15 @@ class HealthBenchEval(Eval):
             example["rubrics"] = [RubricItem.from_dict(d) for d in example["rubrics"]]
 
         rng = random.Random(0)
+
+        indices = list(range(len(examples)))
+        rng.shuffle(indices)  # 一次性打乱
+
+        if num_examples is None:
+            selected_indices = indices[skip:]
+        else:
+            selected_indices = indices[skip:skip+num_examples]
+
 
         # physician completions mode
         self.physician_completions_mode = physician_completions_mode
@@ -351,10 +367,11 @@ class HealthBenchEval(Eval):
                 )
 
         if num_examples is not None and num_examples < len(examples):
-            examples = rng.sample(
-                examples,
-                num_examples,
-            )
+            examples = [examples[i] for i in selected_indices]
+            # examples = rng.sample(
+            #     examples,
+            #     num_examples,
+            # )
 
         self.examples = examples * n_repeats
         self.n_threads = n_threads
@@ -396,6 +413,7 @@ class HealthBenchEval(Eval):
         grading_response_list = common.map_with_progress(
             grade_rubric_item,
             rubric_items,
+            num_threads=1,
             pbar=False,
         )
 
@@ -455,7 +473,7 @@ class HealthBenchEval(Eval):
         return metrics, readable_explanation_str, rubric_items_with_grades
 
     def __call__(self, sampler: SamplerBase) -> EvalResult:
-        def fn(row: dict):
+        def fn(row: dict, index, tmp_dir):
             prompt_messages = row["prompt"]
 
             if self.physician_completions_mode is not None:
@@ -516,12 +534,22 @@ class HealthBenchEval(Eval):
                 },
             )
 
-        results = common.map_with_progress(
-            fn,
-            self.examples,
-            num_threads=self.n_threads,
-            pbar=True,
-        )
+        # results = common.map_with_progress(
+        #     fn,
+        #     self.examples,
+        #     num_threads=self.n_threads,
+        #     pbar=True,
+        # )
+        tmp_dir = f"./tmp/healthbench_eval_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        os.makedirs(tmp_dir, exist_ok=True)
+        results = []
+        for i, example in enumerate(self.examples):
+            result = fn(example, i, tmp_dir)
+            results.append(result)
+            # save the results as a pickle file
+            with open(f"{tmp_dir}/result_{i}.pkl", "wb") as f:
+                pickle.dump(result, f)
+
         final_metrics = _aggregate_get_clipped_mean(results)
         return final_metrics
 
@@ -581,8 +609,8 @@ def physician_completions_main(
         # openai_parameters={"base_url": 
         #                        ["http://localhost:11434/v1", "http://localhost:11435/v1",],
         #                        "api_key":"ollama", "multi_ollma": True}
-        openai_parameters={"base_url":"http://localhost:11435/v1","api_key":"ollama"}
-        # openai_parameters={"base_url":"http://localhost:8000/v1","api_key":"EMPTY"}
+        # openai_parameters={"base_url":"http://localhost:11435/v1","api_key":"ollama"}
+        openai_parameters={"base_url":"http://localhost:8001/v1","api_key":"EMPTY"}
         
     ),
     dummy_sampler = SamplerBase()

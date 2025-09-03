@@ -134,3 +134,5 @@ dmypy.json
 .hf_cache
 
 miniconda3/
+
+tmp/

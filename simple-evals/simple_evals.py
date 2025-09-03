@@ -53,12 +53,15 @@ def main():
     parser.add_argument(
         "--n-threads",
         type=int,
-        default=10,
+        default=1,
         help="Number of threads to run. Only supported for HealthBench and HealthBenchMeta.",
     )
     parser.add_argument("--debug", action="store_true", help="Run in debug mode")
     parser.add_argument(
         "--examples", type=int, help="Number of examples to use (overrides default)"
+    )
+    parser.add_argument(
+        "--skip", type=int, help="Number of examples to skip from start"
     )
 
     args = parser.parse_args()
@@ -73,13 +76,33 @@ def main():
         #     device_map= {"": 1}
         # )
         "gpt-oss-120b": ChatCompletionSampler(
-            model="gpt-oss:120b",
+            # model="gpt-oss:120b",
+            model="openai/gpt-oss-120b",
             system_message=OPENAI_SYSTEM_MESSAGE_API,
             max_tokens=2048,
-            openai_parameters={"base_url": 
-                               ["http://localhost:11434/v1"],
-                               "api_key":"ollama", "multi_ollma": True}
+            openai_parameters={"base_url":"http://localhost:8000/v1","api_key":"EMPTY"}
+            # openai_parameters={"base_url": 
+            #                    ["http://localhost:11434/v1"],
+            #                    "api_key":"ollama", "multi_ollma": True}
         ),
+        "llama-3.1-70b-instruct-turbo": ChatCompletionSampler(
+            model="meta-llama/Meta-Llama-3.1-70B-Instruct-Turbo",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        ),
+        "llama-3.3-70b-instruct-turbo-free": ChatCompletionSampler(
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        ),
+        "llama-3.1-8b-instruct-turbo": ChatCompletionSampler(
+            model="meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        )
     }
 
     #     # Reasoning Models
@@ -281,16 +304,23 @@ def main():
     #     max_tokens=2048, # use smaller model for grading to avoid oom on single GPU!!!
     # )
     grading_sampler = ChatCompletionSampler(
-        model="gpt-oss:20b",
-        # model="Qwen/Qwen2.5-7B-Instruct",
-        system_message=OPENAI_SYSTEM_MESSAGE_API,
-        max_tokens=2048,
-        # openai_parameters={"base_url": 
-        #                        ["http://localhost:11434/v1", "http://localhost:11435/v1",],
-        #                        "api_key":"ollama", "multi_ollma": True}
-        openai_parameters={"base_url":"http://localhost:11434/v1","api_key":"ollama"}
-        # openai_parameters={"base_url":"http://localhost:8000/v1","api_key":"EMPTY"}
-    )
+            model="meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+            system_message=OPENAI_SYSTEM_MESSAGE_API,
+            max_tokens=2048,
+            client_type="together"
+        ),
+    # grading_sampler = ChatCompletionSampler(
+    #     # model="gpt-oss:20b",
+    #     model="openai/gpt-oss-20b",
+    #     # model="Qwen/Qwen2.5-7B-Instruct",
+    #     system_message=OPENAI_SYSTEM_MESSAGE_API,
+    #     max_tokens=2048,
+    #     # openai_parameters={"base_url": 
+    #     #                        ["http://localhost:11434/v1", "http://localhost:11435/v1",],
+    #     #                        "api_key":"ollama", "multi_ollma": True}
+    #     # openai_parameters={"base_url":"http://localhost:11434/v1","api_key":"ollama"}
+    #     openai_parameters={"base_url":"http://localhost:8001/v1","api_key":"EMPTY"}
+    # )
 
     # equality_checker = ChatCompletionSampler(model="gpt-4-turbo-preview")
     # ^^^ used for fuzzy matching, just for math
@@ -339,6 +369,7 @@ def main():
                 return HealthBenchEval(
                     grader_model=grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
+                    skip=args.skip or 0,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name=None,
@@ -347,6 +378,7 @@ def main():
                 return HealthBenchEval(
                     grader_model=grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
+                    skip=args.skip or 0,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name="hard",
@@ -355,17 +387,18 @@ def main():
                 return HealthBenchEval(
                     grader_model=grading_sampler,
                     num_examples=10 if debug_mode else num_examples,
+                    skip=args.skip or 0,
                     n_repeats=args.n_repeats or 1,
                     n_threads=args.n_threads or 1,
                     subset_name="consensus",
                 )
-            # case "healthbench_meta":
-            #     return HealthBenchMetaEval(
-            #         grader_model=grading_sampler,
-            #         num_examples=10 if debug_mode else num_examples,
-            #         n_repeats=args.n_repeats or 1,
-            #         n_threads=args.n_threads or 1,
-            #     )
+            case "healthbench_meta":
+                return HealthBenchMetaEval(
+                    grader_model=grading_sampler,
+                    num_examples=10 if debug_mode else num_examples,
+                    n_repeats=args.n_repeats or 1,
+                    n_threads=args.n_threads or 1,
+                )
             case _:
                 raise Exception(f"Unrecognized eval type: {eval_name}")
 
@@ -413,7 +446,7 @@ def main():
             file_stem = f"{eval_name}_{model_name}"
             # file stem should also include the year, month, day, and time in hours and minutes
             file_stem += f"_{date_str}"
-            report_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}.html"
+            report_filename = f"/home/xufluo/healthbench_reproduce/tmp/{file_stem}{debug_suffix}.html"
             print(f"Writing report to {report_filename}")
             with open(report_filename, "w") as fh:
                 fh.write(common.make_report(result))
@@ -422,12 +455,12 @@ def main():
             # Sort metrics by key
             metrics = dict(sorted(metrics.items()))
             print(metrics)
-            result_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}.json"
+            result_filename = f"/home/xufluo/healthbench_reproduce/tmp/{file_stem}{debug_suffix}.json"
             with open(result_filename, "w") as f:
                 f.write(json.dumps(metrics, indent=2))
             print(f"Writing results to {result_filename}")
 
-            full_result_filename = f"/home/yuqi/data2_yuqi/tmp/{file_stem}{debug_suffix}_allresults.json"
+            full_result_filename = f"/home/xufluo/healthbench_reproduce/tmp/{file_stem}{debug_suffix}_allresults.json"
             with open(full_result_filename, "w") as f:
                 result_dict = {
                     "score": result.score,
